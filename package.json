@@ -1,0 +1,14 @@
+{
+  "name": "jevflow",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.10",
+  "scripts": {
+    "demo": "bun src/index.ts demo",
+    "replay": "bun src/index.ts replay",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": { "zod": "^4.3.6" },
+  "devDependencies": { "@types/bun": "^1.3.10", "typescript": "^5.9.3" }
+}
