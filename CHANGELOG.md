@@ -7,6 +7,11 @@ or enabled live trading.
 
 ### Added
 
+- Credential-free Binance spot recorder with raw payload capture and separate
+  replay files for each connection. Includes trade-ID continuity checks,
+  duplicate suppression, snapshot validation, stale-book detection, bounded
+  reconnect backoff, graceful shutdown, and local WebSocket recovery tests.
+- Rolling 60-second VWAP and taker volume delta in deterministic model features.
 - Initial Bun/TypeScript offline paper trader with synthetic demo and streaming
   JSONL replay for one spot market.
 - Deterministic rolling returns, spread, top-of-book imbalance, and taker-flow
@@ -27,7 +32,10 @@ or enabled live trading.
 
 ### Limitations
 
-- No public exchange recorder, live market feed, live orders, or wallet support.
+- Public capture is receive-time ordered and uses sampled top-five snapshots;
+  there is no full-depth delta reconstruction or outage backfill. Replay each
+  connection segment separately. No concurrent live paper strategy, live orders,
+  or wallet support.
 - No demonstrated trading profitability or validated strategy thresholds.
 - Queue priority, market impact, exchange rounding, and post-only rejection during
   latency remain unmodeled. Final inventory is not liquidated.

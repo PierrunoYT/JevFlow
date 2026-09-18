@@ -46,6 +46,8 @@ export interface Features {
   returnBps: number;
   bookImbalance: number;
   flowImbalance: number;
+  volumeDelta: number;
+  vwap: number | null;
   observations: number;
 }
 

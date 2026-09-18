@@ -19,15 +19,19 @@ describe("features and input contracts", () => {
   test("computes asymmetric book/flow imbalances and time-window returns", () => {
     const engine = new FeatureEngine();
     engine.book(book());
-    engine.trade(trade(1, { side: "buy", size: 7 }));
-    engine.trade(trade(2, { size: 1 }));
+    engine.trade(trade(1, { side: "buy", size: 7, price: 102 }));
+    engine.trade(trade(2, { size: 1, price: 98 }));
     const state = engine.book({ ...book(1_000), bid: 101, ask: 101.04 });
     expect(state.bookImbalance).toBeCloseTo(0.4);
     expect(state.flowImbalance).toBeCloseTo(0.75);
+    expect(state.volumeDelta).toBe(6);
+    expect(state.vwap).toBe(101.5);
     expect(state.returnBps).toBeCloseTo(99.9800039992);
     expect(state.spreadBps).toBeCloseTo(3.959611958);
     const later = engine.book(book(61_001));
     expect(later.flowImbalance).toBe(0);
+    expect(later.volumeDelta).toBe(0);
+    expect(later.vwap).toBeNull();
     expect(later.returnBps).toBe(0);
     expect(later.observations).toBe(1);
   });

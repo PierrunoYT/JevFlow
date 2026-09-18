@@ -1,10 +1,11 @@
 # JevFlow
 A trading bot powered by TypeSafe AI's Jev.
 
-## Status: offline paper-trading foundation
+## Status: public recorder and offline paper trading
 
-This is a Bun/TypeScript CLI, not a live trading system. It replays a single
-spot market, computes deterministic features, evaluates buy/sell/hold, applies
+This is a Bun/TypeScript CLI, not a live trading system. It records public Binance
+spot market data and replays a single market, computes deterministic features,
+evaluates buy/sell/hold, applies
 risk checks, simulates maker fills, and writes an append-only JSONL audit log.
 There is no wallet, exchange authentication, or live order adapter.
 
@@ -25,6 +26,56 @@ The demo runs four minutes of synthetic events immediately. It uses an explicitl
 uncalibrated order-book imbalance baseline, **not Jev**. Its results are smoke-test
 output, not evidence of profitability. The printed summary includes fees,
 mark-to-market P&L, inventory, fills, drawdown, and the audit file path.
+
+### Record public market data
+
+No exchange account, wallet, or API key is needed:
+
+```bash
+bun run record BTCUSDT --seconds 60 --out data/btc-session
+bun run replay data/btc-session/events-0001.jsonl
+```
+
+The recorder defaults to BTCUSDT and 60 seconds; the maximum duration is 24 hours.
+The output directory must not already exist. Ctrl+C closes the files cleanly.
+It connects only to Binance's public market-data WebSocket, not a trading API.
+Availability depends on network and regional exchange restrictions.
+
+- `raw.jsonl` preserves every received payload with local receive time and
+  connection segment, including messages rejected by validation. It also records
+  segment-end reasons and totals. Exchange timestamps and source IDs remain in
+  the raw payload. This file is **not** direct replay input.
+- `events-0001.jsonl`, etc. contain normalized top-of-book and individual trade
+  events. The Binance buyer-is-maker flag is converted to aggressor side.
+- Full top-five snapshots arrive on `depth5@100ms`. The normalizer validates level
+  ordering and uncrossed touch prices; only the touch is exported for replay.
+  Full depth remains in the raw payload. Snapshot update IDs need not be consecutive.
+- Consecutive trade IDs are checked. Immediate duplicate trades are discarded;
+  gaps, regressions, invalid data, and book observation gaps over one second close
+  the segment. A book watchdog also closes silent connections after ten seconds.
+- Reconnect uses bounded exponential backoff (1–30 seconds). Every connection
+  starts a new file and waits for a fresh snapshot before exporting trades.
+  **Replay segments separately; never concatenate them across an outage.**
+  Empty segments from failed connections are not valid replay input.
+
+This deliberately does not backfill outages or claim complete exchange history.
+Normalized timestamps use **local receive time** for both channels because the
+partial-depth feed has no exchange timestamp. Replay therefore models observed
+arrival order, not exact matching-engine order. Sub-second sampling loss, network
+delays, and inter-channel timing can bias simulated fills. Use these captures for
+integration and exploratory research, not profitability claims.
+
+For a longer recording in an Amp orb, use a supervised service:
+
+```bash
+amp orb service start jevflow-recorder --command 'bun run record BTCUSDT --seconds 3600'
+amp orb service logs jevflow-recorder
+amp orb service stop jevflow-recorder
+```
+
+The default output directory is unique per run. A service supervisor can restart
+the bounded command after it finishes, producing another session; stop the
+service when enough data has been collected. No web server or portal is needed.
 
 ### Replay recorded data
 
@@ -74,6 +125,8 @@ model availability still need a credentialed smoke test.
 
 - Decisions every five event-time seconds after five book observations. Features
   use up to 60 seconds of history; warmup does not require a full minute.
+  VWAP is volume-weighted trade price (`null` with no trades); `volumeDelta` is
+  taker-buy volume minus taker-sell volume over that rolling window, in base units.
 - $10,000 starting cash; long-only; $100 orders; $500 maximum proposed exposure;
   one open order; 10 bps maximum spread; 10 bps fee on each fill. See `src/paper.ts`.
 - A $25 **run-level** equity drawdown permanently halts orders and cancels the
@@ -90,11 +143,11 @@ model availability still need a credentialed smoke test.
   liquidation costs and stale final marks can change realizable P&L.
 - Outcome labels use the first book at or after 60 seconds and record any delay.
   Unfinished horizons remain unlabelled. These are direction labels, not fill P&L.
-- No exchange recorder, live paper feed, cached Jev replay, calibration metrics,
+- No concurrent live paper strategy, cached Jev replay, calibration metrics,
   walk-forward evaluation, persistence recovery, or live execution yet.
 
-Next milestone: record a chosen exchange's public book/trade stream, validate
-sequence integrity, and evaluate Jev against baselines on held-out market data.
+Next milestone: evaluate Jev against baselines on held-out recorded market data
+and improve fill simulation before considering any live execution.
 See [the research](JEV_RESEARCH.md) and [the design guide](TRADING_BOT_GUIDE.md).
 
 ## Development and orb setup
@@ -112,8 +165,8 @@ bun run typecheck
 Setup is non-interactive and safe to repeat. It needs network access for missing
 dependencies; installing Bun also requires `curl` and `unzip`, available in the
 standard orb image. It does not create `.env`, configure credentials, call Jev,
-or start background services. No resume hook or service configuration is needed
-for this offline CLI. Setup becomes available to future default-branch orbs once
+or start background services. Recording is opt-in; no resume hook is needed.
+Setup becomes available to future default-branch orbs once
 committed and pushed to `main`.
 
 ### Code ownership and verification
@@ -126,7 +179,9 @@ committed and pushed to `main`.
 | `src/paper.ts` | Risk limits, order lifecycle, fills, and portfolio |
 | `src/replay.ts` | Chronological processing, decision gates, audit, and outcomes |
 | `src/index.ts` | CLI, synthetic events, file input/output |
+| `src/recorder.ts`, `src/record.ts` | Public Binance normalization, capture, reconnect, and CLI |
 | `src/bot.test.ts` | Offline unit and integration tests |
+| `src/recorder.test.ts` | Feed validation and local WebSocket recovery tests |
 
 Run both tests and typechecking before committing. Tests require no API key and
 make no external model requests. Changing execution semantics requires updating
@@ -146,3 +201,8 @@ are intentionally not persisted. Check credentials and model availability
 separately without printing secrets.
 
 See [CHANGELOG.md](CHANGELOG.md) for milestone changes.
+
+Recorder and feature ideas were informed by
+[`jarrodwatts/jev-trader`](https://github.com/jarrodwatts/jev-trader); no source was
+copied. The Binance adapter follows the
+[official WebSocket protocol](https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md).
