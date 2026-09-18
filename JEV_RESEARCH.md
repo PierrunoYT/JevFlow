@@ -5,7 +5,7 @@ reference-repository observations below describe the sources when originally
 reviewed; they have not been revalidated for this documentation update. Check the
 linked official sources before relying on current pricing, limits, or API behavior.
 For the implemented bot, use [README.md](README.md) and the
-[Testnet operator guide](TESTNET_GUIDE.md).
+[Kraken operator guide](KRAKEN_GUIDE.md).
 
 ## Overview
 
@@ -226,14 +226,15 @@ Arithmetic should remain in code:
 
 JevFlow now implements a replay harness with full decision distributions, future
 midpoint labels, and simulated maker fills—not proof of executable exchange
-fills. It also has experimental, dry-run-by-default Binance Spot Testnet execution
-with virtual assets and persistent order reconciliation. Its direct HTTP client
+fills. It also has experimental, dry-run-by-default Kraken BTC/CHF spot execution
+with persistent order reconciliation. Live mode uses real funds, not a sandbox.
+Its direct HTTP client
 pins `jev-1.13.0` and asks one buy/sell/hold question; the SDK reference above is
 not the local implementation.
 
-Out-of-sample net expectancy is still unproven. Authenticated Testnet execution
-and Jev API compatibility remain unverified; the orb's public Testnet check
-returned HTTP 451. No production trading keys or real funds should be introduced
+Out-of-sample net expectancy is still unproven. Authenticated Kraken execution
+and Jev API compatibility remain unverified. Public Kraken access has been tested,
+but this does not validate account-specific trading. No real funds should be introduced
 on the strength of the replay tests or these research notes.
 
 ## Sources

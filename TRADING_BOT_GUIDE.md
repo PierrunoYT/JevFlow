@@ -6,9 +6,9 @@ Use Jev as the **decision layer**, surrounded by deterministic market-data, risk
 
 This document is a design guide, not a copy-and-run implementation manual.
 Use [README.md](README.md) for supported commands and
-[TESTNET_GUIDE.md](TESTNET_GUIDE.md) for credentials, virtual funds, and recovery.
+[KRAKEN_GUIDE.md](KRAKEN_GUIDE.md) for credentials, CHF funding, and recovery.
 
-- Public Binance recording and offline single-market paper replay are implemented.
+- Public Kraken BTC/CHF recording and offline single-market paper replay are implemented.
 - `src/jev.ts` uses direct HTTP, pinned `jev-1.13.0`, and one `direction` Choice
   question with buy/sell/hold. The SDK and multi-question examples below are
   proposals, not installed dependencies or active strategy gates.
@@ -16,17 +16,18 @@ Use [README.md](README.md) for supported commands and
   return, book/flow imbalance, volume delta, VWAP, and observation count.
   Volatility, multi-horizon returns, depth bands, and portfolio features in the
   examples below are not currently supplied to Jev.
-- `src/binance.ts`, `src/trading.ts`, and `src/testnet.ts` implement experimental
-  BTCUSDT Spot Testnet execution. It defaults to dry-run, uses book-only REST
+- `src/kraken.ts`, `src/trading.ts`, and `src/trade.ts` implement experimental
+  Kraken BTC/CHF spot execution. It defaults to dry-run, uses book-only REST
   observations, and persists order intent, risk state, and audit data in SQLite.
   It does not share the recorder's trade stream or reproduce paper fills.
-- Testnet caps are 25 USDT per order, 500 USDT proposed BTC exposure, 100 submission
-  attempts per UTC day, and a persisted 25 USDT account-pair drawdown halt.
+- Kraken caps are CHF 10 per order, CHF 50 account-pair allocation and proposed BTC
+  exposure, ten attempts per UTC day, and a persisted CHF 5 account-pair drawdown halt.
   The drawdown is not a daily strategy-loss calculation. Paper replay instead
   uses $100 orders and a run-level drawdown halt; see the README.
 - Authenticated exchange placement/cancellation and Jev compatibility remain
-  unverified. The orb's public Testnet check returned HTTP 451. No production
-  adapter, real-money funding, or demonstrated profitability is available.
+  unverified. Public Kraken connectivity has been checked. A validation-only
+  command is available, but it cannot verify fills. Live opt-in uses real money;
+  no sandbox, automatic funding, or demonstrated profitability is provided.
 
 ## Recommended architecture
 
@@ -113,7 +114,7 @@ interface Execution {
 ```
 
 These proposed interfaces could support strategy reuse. They do not establish
-equivalence between the current replay and Testnet paths.
+equivalence between the current replay and Kraken execution paths.
 
 ## Build deterministic features
 
@@ -438,7 +439,7 @@ Avoid candle-only backtests for an order-book strategy. Candles do not provide e
 
 ## Record every decision
 
-Paper replay uses append-only JSONL; Testnet uses the SQLite audit table described
+Paper replay uses append-only JSONL; Kraken execution uses the SQLite audit table described
 in the operator guide. The following is a proposed combined record, not the exact
 schema of either current output:
 
@@ -509,17 +510,19 @@ Never randomly shuffle time-series samples. That leaks future market regimes int
 3. **Jev shadow mode:** Query Jev and log answers without trading.
 4. **Replay harness:** Evaluate thresholds and compare with simple baselines.
 5. **Paper trading:** Simulate actual order behavior and costs.
-6. **Testnet:** Validate placement, partial fills, cancellation, restart recovery,
-   and kill switches using virtual assets and manual supervision.
+6. **Execution validation:** Test placement, partial fills, cancellation, restart
+   recovery, and kill switches with mocks. Kraken's `validate=true` checks requests
+   without placing orders, but is not a virtual-money matching engine.
 7. **Production readiness review:** Require exchange integration validation,
    monitoring, and positive out-of-sample net expectancy before separately
-   implementing and authorizing any real-money execution.
+   authorizing any real-money execution. Supervised real-order tests require
+   separate approval and can lose money.
 8. **Scale only from observed net expectancy:** Do not scale from classification accuracy.
 
 JevFlow now has the single-market paper/replay foundation and an experimental
-Testnet adapter. Evaluation and authenticated Testnet validation are still
-outstanding. Testnet development is execution testing, not evidence of trading
-edge or permission to add real funds.
+Kraken adapter. Evaluation and authenticated execution validation are still
+outstanding. Adapter development is not evidence of trading edge or permission
+to add real funds; see the operator guide before enabling live mode.
 
 ## Sources
 

@@ -1,9 +1,47 @@
 # Changelog
 
-Changes are recorded here by milestone. This project has not published a package
-or enabled production trading. Experimental Testnet execution uses virtual assets.
+Changes are recorded here by milestone. This project has not published a package.
+Current execution is Kraken-only, dry-run by default, with explicit real-money opt-in.
 
 ## Unreleased
+
+### Kraken-only migration
+
+- Replaced Binance Testnet execution and public capture with Kraken Spot BTC/CHF.
+  Removed the `testnet` command and old credentials; old state is not migrated or
+  deleted. Resolve old orders before upgrading; see `KRAKEN_GUIDE.md`.
+- Added `kraken check`, `status`, `run`, `validate`, `stop`, `reconcile`, and
+  `reset-risk`. Live submissions require explicit CLI and environment opt-ins;
+  cancellation requires acknowledgement. No deposits or withdrawals are implemented.
+- Added HMAC-SHA512 signing verified against Kraken's published vector, persistent
+  monotonic nonces, held-balance subtraction, UUID recovery across open/closed
+  order history, post-only GTD orders requesting 15-second server expiry, and
+  validation-only AddOrder requests.
+- Set CHF 10/order, CHF 50 allocation/proposed exposure, CHF 5 persistent drawdown,
+  and ten submission attempts per UTC day. Minimums that exceed caps block trades.
+- Replaced public recording with v2 BBO ticker and live trades, preserving raw
+  payloads and connection segments. Trade IDs are not assumed consecutive.
+- Added Swiss account/funding, permissions, dry-run/live, migration, and recovery
+  instructions; updated all active documentation for Kraken.
+
+### Verification and remaining limits
+
+- Public BTC/CHF REST rules/book check succeeded. A 15-second public WebSocket
+  capture produced 40 normalized events with no interruptions and one segment.
+- Mock tests cover signatures, nonces, balances, validation/live separation,
+  pagination, uncertain submissions, partial fills, cancellation races, expiry,
+  kill switches, and local WebSocket recovery. No authenticated requests, Jev
+  calls, deposits, or real orders were made for this migration.
+- Real placement/fills/cancellation and model compatibility remain unverified.
+  Validation-only requests are not a sandbox. Profitability remains unproven.
+- The execution loop uses REST books without trade flow. Recorder data is sampled
+  top-of-book with receive-time ordering; no full-depth reconstruction or backfill.
+- Loss/size gates do not guarantee maximum loss; BTC inventory is not liquidated
+  on halt. Unknown orders remain blocked; recovery may require manual investigation.
+
+## Earlier milestones (superseded exchange support)
+
+The entries below describe previous versions, not current setup instructions.
 
 ### Added
 

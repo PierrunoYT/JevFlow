@@ -4,7 +4,7 @@ import { recordMarket } from "./recorder";
 
 async function main() {
   const args = process.argv.slice(2);
-  const symbol = args[0] && !args[0].startsWith("--") ? args.shift()! : "BTCUSDT";
+  const symbol = args[0] && !args[0].startsWith("--") ? args.shift()! : "BTC/CHF";
   let seconds = 60;
   let directory = `data/recording-${Date.now()}`;
   while (args.length) {
@@ -12,7 +12,7 @@ async function main() {
     const value = args.shift();
     if (flag === "--seconds" && value) seconds = Number(value);
     else if (flag === "--out" && value) directory = value;
-    else throw new Error("Usage: bun run record [BTCUSDT] [--seconds 60] [--out NEW_DIRECTORY]");
+    else throw new Error("Usage: bun run record [BTC/CHF] [--seconds 60] [--out NEW_DIRECTORY]");
   }
   const controller = new AbortController();
   const stop = () => controller.abort();
