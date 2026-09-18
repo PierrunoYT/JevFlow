@@ -7,6 +7,7 @@ export const TIMEOUT_MS = 1_000;
 export function jevState(features: Features) {
   return {
     horizonSeconds: 60,
+    observationNote: "A null VWAP means no trades were observed. Treat flow evidence as unavailable, not neutral, in that case.",
     execution: "Long-only spot. Buy posts at best bid; sell posts at best ask. Maker orders may not fill and expire after 15 seconds. Hold places no order.",
     features,
     marketState: {

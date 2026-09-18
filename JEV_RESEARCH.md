@@ -1,5 +1,12 @@
 # How TypeSafe AI's Jev Works
 
+These are research notes, not the JevFlow operating manual. Provider figures and
+reference-repository observations below describe the sources when originally
+reviewed; they have not been revalidated for this documentation update. Check the
+linked official sources before relying on current pricing, limits, or API behavior.
+For the implemented bot, use [README.md](README.md) and the
+[Testnet operator guide](TESTNET_GUIDE.md).
+
 ## Overview
 
 Jev is **not a chat model** and does not generate text. It is TypeSafe AI's first "System One" model:
@@ -75,12 +82,12 @@ Questions sharing a state run independently and in parallel. A question cannot c
 
 Unlike an autoregressive LLM, Jev does not emit tokens sequentially. Its specialized sampler produces the requested distributions in parallel.
 
-TypeSafe currently reports:
+The reviewed TypeSafe documentation reported:
 
 - Typical latency: approximately **70–500 ms**, often around 100 ms.
 - Price: **$0.042 per million input tokens**.
 - Output tokens: not billed.
-- Current model: `jev-1.13.0`; aliases include `jev-latest`.
+- Model at review: `jev-1.13.0`; aliases include `jev-latest`.
 - Context: 64k combined request budget, with 32k for state plus the longest question.
 - Choice cardinality: up to 255 options.
 - Training objective: **Reinforcement Learning for Calibrated Decisions**, or RLCD.
@@ -217,7 +224,17 @@ Arithmetic should remain in code:
 - Drawdown and kill switches.
 - Staleness and timing checks.
 
-For JevFlow, the safest first milestone is a replay/backtest harness that logs the complete probability distribution against future returns and actual executable fills. It should demonstrate out-of-sample net expectancy before any live private key is introduced.
+JevFlow now implements a replay harness with full decision distributions, future
+midpoint labels, and simulated maker fills—not proof of executable exchange
+fills. It also has experimental, dry-run-by-default Binance Spot Testnet execution
+with virtual assets and persistent order reconciliation. Its direct HTTP client
+pins `jev-1.13.0` and asks one buy/sell/hold question; the SDK reference above is
+not the local implementation.
+
+Out-of-sample net expectancy is still unproven. Authenticated Testnet execution
+and Jev API compatibility remain unverified; the orb's public Testnet check
+returned HTTP 451. No production trading keys or real funds should be introduced
+on the strength of the replay tests or these research notes.
 
 ## Sources
 

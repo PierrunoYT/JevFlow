@@ -1,13 +1,56 @@
 # JevFlow
 A trading bot powered by TypeSafe AI's Jev.
 
-## Status: public recorder and offline paper trading
+## Status: paper trading and experimental Testnet execution
 
-This is a Bun/TypeScript CLI, not a live trading system. It records public Binance
+This is a Bun/TypeScript CLI, not a production trading system. It records public Binance
 spot market data and replays a single market, computes deterministic features,
 evaluates buy/sell/hold, applies
 risk checks, simulates maker fills, and writes an append-only JSONL audit log.
-There is no wallet, exchange authentication, or live order adapter.
+An experimental Binance Spot **Testnet-only** adapter adds authenticated balances,
+maker orders, persistent reconciliation, and a kill switch. It defaults to dry-run
+and cannot send orders to production. There is no wallet or real-money deposit path.
+**Profitability is unproven; do not fund this bot with real money.**
+
+### Testnet trading
+
+Start with `bun run testnet check` (public connectivity only). Follow the
+[Testnet operator guide](TESTNET_GUIDE.md) for virtual funds, credentials, explicit
+execution opt-in, safeguards, and recovery. Authenticated order placement and
+cancellation have not been verified against the exchange: this orb's public
+Testnet check received HTTP 451. Do not bypass network or regional restrictions.
+
+### Command quick reference
+
+Run commands from the repository root. `FILE` is a normalized event JSONL file.
+
+| Command | Credentials | Effect |
+| --- | --- | --- |
+| `bun run demo` | None | Offline synthetic simulation; writes a local audit |
+| `bun run record BTCUSDT --seconds 60` | None | Public feed capture; writes local data |
+| `bun run replay FILE` | None | Offline baseline simulation; writes a local audit |
+| `bun run replay FILE --jev` | TypeSafe | Billable model calls; simulated orders only |
+| `bun run testnet check` | None | Public Testnet connectivity, book, and filters |
+| `bun run testnet status` | Testnet | Reads balances and open BTCUSDT orders |
+| `bun run testnet run` | Testnet | Always-hold observer; updates local risk/audit state |
+| `bun run testnet run --jev` | Testnet + TypeSafe | Billable predictions and dry-run proposals; no exchange writes |
+| `bun run testnet run --jev --execute-testnet` | Testnet + TypeSafe | Can submit and cancel virtual-asset orders |
+| `bun run testnet stop` | None | Writes a local stop request; cancellation is not guaranteed |
+| `bun run testnet reconcile` | Testnet | Queries and may cancel the tracked order |
+| `bun run testnet reset-risk --acknowledge-risk-reset` | Testnet | Checks exchange orders and explicitly resets local risk state |
+
+See the [operator guide](TESTNET_GUIDE.md#stop-and-recover) before reconciliation
+or risk reset. No command enables production trading or accepts real deposits.
+
+### Documentation map
+
+- [Testnet operator guide](TESTNET_GUIDE.md): setup, virtual funds, limits, stopping,
+  and recovery.
+- [Design guide](TRADING_BOT_GUIDE.md): implemented architecture versus proposed
+  extensions; example snippets are not the current API.
+- [Jev research](JEV_RESEARCH.md): provider and reference-bot research, not an
+  operational guide or a current pricing guarantee.
+- [Changelog](CHANGELOG.md): implementation milestones and known limitations.
 
 ### Run without credentials
 
@@ -121,7 +164,7 @@ inference, not a live feed. Jev receives market features only, never the API key
 in its state. Transport tests use mocked responses; real API compatibility and
 model availability still need a credentialed smoke test.
 
-### Current assumptions and limitations
+### Paper replay assumptions and limitations
 
 - Decisions every five event-time seconds after five book observations. Features
   use up to 60 seconds of history; warmup does not require a full minute.
@@ -144,10 +187,11 @@ model availability still need a credentialed smoke test.
 - Outcome labels use the first book at or after 60 seconds and record any delay.
   Unfinished horizons remain unlabelled. These are direction labels, not fill P&L.
 - No concurrent live paper strategy, cached Jev replay, calibration metrics,
-  walk-forward evaluation, persistence recovery, or live execution yet.
+  walk-forward evaluation, or production execution. Testnet execution has separate
+  limits and persistent order recovery; see the operator guide.
 
 Next milestone: evaluate Jev against baselines on held-out recorded market data
-and improve fill simulation before considering any live execution.
+and validate the authenticated Testnet lifecycle before considering real-money execution.
 See [the research](JEV_RESEARCH.md) and [the design guide](TRADING_BOT_GUIDE.md).
 
 ## Development and orb setup
@@ -180,8 +224,11 @@ committed and pushed to `main`.
 | `src/replay.ts` | Chronological processing, decision gates, audit, and outcomes |
 | `src/index.ts` | CLI, synthetic events, file input/output |
 | `src/recorder.ts`, `src/record.ts` | Public Binance normalization, capture, reconnect, and CLI |
+| `src/binance.ts` | Testnet-only signed REST transport and exact decimal sizing |
+| `src/trading.ts`, `src/testnet.ts` | Durable intent, reconciliation, risk gates, and operator CLI |
 | `src/bot.test.ts` | Offline unit and integration tests |
 | `src/recorder.test.ts` | Feed validation and local WebSocket recovery tests |
+| `src/trading.test.ts` | Mocked exchange lifecycle, decimal sizing, persistence, and failure tests |
 
 Run both tests and typechecking before committing. Tests require no API key and
 make no external model requests. Changing execution semantics requires updating
@@ -204,5 +251,8 @@ See [CHANGELOG.md](CHANGELOG.md) for milestone changes.
 
 Recorder and feature ideas were informed by
 [`jarrodwatts/jev-trader`](https://github.com/jarrodwatts/jev-trader); no source was
-copied. The Binance adapter follows the
+copied. The recorder follows the
 [official WebSocket protocol](https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md).
+The execution adapter follows the
+[Spot Testnet REST documentation](https://github.com/binance/binance-spot-api-docs/blob/master/testnet/rest-api.md)
+and [exchange filters](https://github.com/binance/binance-spot-api-docs/blob/master/filters.md).

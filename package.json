@@ -7,6 +7,7 @@
     "demo": "bun src/index.ts demo",
     "replay": "bun src/index.ts replay",
     "record": "bun src/record.ts",
+    "testnet": "bun src/testnet.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },

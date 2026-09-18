@@ -2,6 +2,32 @@
 
 Use Jev as the **decision layer**, surrounded by deterministic market-data, risk, execution, and accounting code. Do not let Jev directly place trades or calculate indicators.
 
+## What is implemented today
+
+This document is a design guide, not a copy-and-run implementation manual.
+Use [README.md](README.md) for supported commands and
+[TESTNET_GUIDE.md](TESTNET_GUIDE.md) for credentials, virtual funds, and recovery.
+
+- Public Binance recording and offline single-market paper replay are implemented.
+- `src/jev.ts` uses direct HTTP, pinned `jev-1.13.0`, and one `direction` Choice
+  question with buy/sell/hold. The SDK and multi-question examples below are
+  proposals, not installed dependencies or active strategy gates.
+- `src/types.ts` defines the actual feature contract: midpoint, spread, rolling
+  return, book/flow imbalance, volume delta, VWAP, and observation count.
+  Volatility, multi-horizon returns, depth bands, and portfolio features in the
+  examples below are not currently supplied to Jev.
+- `src/binance.ts`, `src/trading.ts`, and `src/testnet.ts` implement experimental
+  BTCUSDT Spot Testnet execution. It defaults to dry-run, uses book-only REST
+  observations, and persists order intent, risk state, and audit data in SQLite.
+  It does not share the recorder's trade stream or reproduce paper fills.
+- Testnet caps are 25 USDT per order, 500 USDT proposed BTC exposure, 100 submission
+  attempts per UTC day, and a persisted 25 USDT account-pair drawdown halt.
+  The drawdown is not a daily strategy-loss calculation. Paper replay instead
+  uses $100 orders and a run-level drawdown halt; see the README.
+- Authenticated exchange placement/cancellation and Jev compatibility remain
+  unverified. The orb's public Testnet check returned HTTP 451. No production
+  adapter, real-money funding, or demonstrated profitability is available.
+
 ## Recommended architecture
 
 ```text
@@ -43,7 +69,10 @@ Jev requests normally take roughly 70–500 ms. Do not begin with one decision e
 
 The execution described to Jev must exactly match the actual execution path.
 
-## Suggested project structure
+## Proposed expanded project structure
+
+The layout below is a future decomposition, not the current directory tree.
+The README's module table maps the existing implementation.
 
 ```text
 src/
@@ -83,7 +112,8 @@ interface Execution {
 }
 ```
 
-That lets the exact same strategy run in replay, paper, and live modes.
+These proposed interfaces could support strategy reuse. They do not establish
+equivalence between the current replay and Testnet paths.
 
 ## Build deterministic features
 
@@ -155,7 +185,7 @@ The raw values remain available, but code has already performed the exact arithm
 
 ## Ask Jev atomic questions
 
-Install the integration:
+For an optional future SDK integration (not needed to run JevFlow):
 
 ```bash
 bun add ai @ai-sdk/typesafe-ai
@@ -326,7 +356,9 @@ function hold(reason: string): StrategyDecision {
 }
 ```
 
-Those thresholds are only safe starting assumptions. They are not validated trading parameters.
+Those thresholds are illustrative placeholders, not safety guarantees or
+validated trading parameters. Only the direction probability and confidence
+gates are implemented today; the additional questions above are proposals.
 
 ## Add an independent risk engine
 
@@ -368,7 +400,7 @@ function approveOrder(
 
 Important invariant: if the requested side is blocked, **hold**. Never silently reverse a buy into a sell.
 
-Additional mandatory controls:
+Controls to evaluate before production use (not all implemented):
 
 - Maximum order notional.
 - Maximum total exposure.
@@ -406,7 +438,9 @@ Avoid candle-only backtests for an order-book strategy. Candles do not provide e
 
 ## Record every decision
 
-Use append-only JSONL initially:
+Paper replay uses append-only JSONL; Testnet uses the SQLite audit table described
+in the operator guide. The following is a proposed combined record, not the exact
+schema of either current output:
 
 ```json
 {
@@ -475,10 +509,17 @@ Never randomly shuffle time-series samples. That leaks future market regimes int
 3. **Jev shadow mode:** Query Jev and log answers without trading.
 4. **Replay harness:** Evaluate thresholds and compare with simple baselines.
 5. **Paper trading:** Simulate actual order behavior and costs.
-6. **Testnet or minimal live size:** Apply strict caps and manual supervision.
-7. **Scale only from observed net expectancy:** Do not scale from classification accuracy.
+6. **Testnet:** Validate placement, partial fills, cancellation, restart recovery,
+   and kill switches using virtual assets and manual supervision.
+7. **Production readiness review:** Require exchange integration validation,
+   monitoring, and positive out-of-sample net expectancy before separately
+   implementing and authorizing any real-money execution.
+8. **Scale only from observed net expectancy:** Do not scale from classification accuracy.
 
-For JevFlow, build the first version as a **single-market paper trader with replay support**, a 60-second horizon, explicit `buy/sell/hold`, pinned `jev-1.13.0`, and no live execution module until replay and paper results show positive out-of-sample expectancy.
+JevFlow now has the single-market paper/replay foundation and an experimental
+Testnet adapter. Evaluation and authenticated Testnet validation are still
+outstanding. Testnet development is execution testing, not evidence of trading
+edge or permission to add real funds.
 
 ## Sources
 
